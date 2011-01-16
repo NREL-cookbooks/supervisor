@@ -1,0 +1,13 @@
+description     "supervisord"
+
+start on runlevel [345]
+stop on runlevel [!345]
+
+<% if(node[:platform] == "ubuntu" && node[:platform_version].to_f <= 9.04) %>
+daemon
+<% else %>
+expect fork
+<% end %>
+respawn
+
+exec /usr/bin/supervisord -c /etc/supervisor/supervisord.conf
