@@ -7,6 +7,7 @@
 # All rights reserved - Do Not Redistribute
 #
 
+include_recipe "logrotate"
 include_recipe "python"
 
 #
@@ -47,24 +48,17 @@ directory "/var/log/supervisor" do
   mode "0755"
 end
 
-#
-# Upstart service configuration
-#
-
-upstart_conf_path = "/etc/init/supervisord.conf"
-if(node[:platform] == "ubuntu" && node[:platform_version].to_f <= 9.04)
-  upstart_conf_path = "/etc/event.d/supervisord"
-end
-
-template upstart_conf_path do
-  source "upstart.conf.erb"
-  owner "root"
-  group "root"
-  mode "0644"
-  notifies :restart, "service[supervisord]"
+template "/etc/init.d/supervisord" do
+  source "supervisord.init.erb"
+  mode "0755"
 end
 
 service "supervisord" do
-  provider Chef::Provider::Service::Upstart
-  action :start
+  supports :status => true, :restart => true
+  action [:enable, :start]
+end
+
+logrotate_app "supervisor" do
+  path "/var/log/supervisor/*.log"
+  rotate 7
 end
