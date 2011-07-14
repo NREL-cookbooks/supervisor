@@ -22,19 +22,13 @@ end
 # Default Configuration
 #
 
-directory "/etc/supervisor" do
-  owner "root"
-  group "root"
-  mode "0755"
-end
-
-directory "/etc/supervisor/conf.d" do
+directory "/etc/supervisord.d" do
   owner "root"
   group(node[:common_writable_group] || "root")
   mode "0775"
 end
 
-template "/etc/supervisor/supervisord.conf" do
+template "/etc/supervisord.conf" do
   source "supervisord.conf.erb"
   owner "root"
   group "root"
