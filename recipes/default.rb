@@ -53,6 +53,9 @@ service "supervisord" do
 end
 
 logrotate_app "supervisor" do
-  path "/var/log/supervisor/*.log"
-  rotate 7
+  path ["/var/log/supervisor/*.log", node[:supervisor][:logrotate][:extra_paths]].flatten
+  frequency "daily"
+  rotate node[:supervisor][:logrotate][:rotate]
+  create "644 root root"
+  cookbook "supervisor"
 end
