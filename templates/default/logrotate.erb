@@ -9,6 +9,6 @@
   sharedscripts
   postrotate
     # Send SIGUSR2 signal to tell supervisord to reopen all log files.
-    kill -SIGUSR2 `supervisorctl pid`
+    kill -USR2 `supervisorctl pid`
   endscript
 }
