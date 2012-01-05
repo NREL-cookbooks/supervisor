@@ -8,6 +8,7 @@
   create <%= @create %>
   sharedscripts
   postrotate
-    supervisorctl restart all
+    # Send SIGUSR2 signal to tell supervisord to reopen all log files.
+    kill -SIGUSR2 `supervisorctl pid`
   endscript
 }
