@@ -18,6 +18,12 @@ easy_install_package "supervisor" do
   version node[:supervisor][:version]
 end
 
+# Perform smarter restarts, so only one process in a group is down at a time.
+template "/usr/local/bin/supervisorctl_rolling_restart" do
+  source "supervisorctl_rolling_restart.erb"
+  mode "0755"
+end
+
 #
 # Default Configuration
 #
