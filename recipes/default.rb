@@ -17,6 +17,7 @@
 # limitations under the License.
 #
 
+include_recipe "logrotate"
 include_recipe "python"
 
 python_pip "supervisor" do
@@ -26,8 +27,8 @@ end
 
 directory node['supervisor']['dir'] do
   owner "root"
-  group "root"
-  mode "755"
+  group(node[:common_writable_group] || "root")
+  mode "775"
 end
 
 template "/etc/supervisord.conf" do
@@ -52,23 +53,43 @@ directory node['supervisor']['log_dir'] do
   recursive true
 end
 
+template "/etc/init.d/supervisor" do
+  source "supervisor.init.erb"
+  owner "root"
+  group "root"
+  mode "755"
+end
+
 case node['platform']
 when "debian", "ubuntu"
-  template "/etc/init.d/supervisor" do
-    source "supervisor.init.erb"
-    owner "root"
-    group "root"
-    mode "755"
-  end
-
   template "/etc/default/supervisor" do
     source "supervisor.default.erb"
     owner "root"
     group "root"
     mode "644"
   end
+end
 
-  service "supervisor" do
-    action [:enable, :start]
+service "supervisor" do
+  action [:enable, :start]
+end
+
+# Cleanup from previous Chef cookbook where things were named "supervisord"
+# instead of "supervisor".
+if File.exists?("/etc/init.d/supervisord")
+  file "/etc/init.d/supervisord" do
+    action :delete
   end
+
+  service "supervisord" do
+    action [:stop, :disable]
+  end
+end
+
+logrotate_app "supervisor" do
+  path ["#{node[:supervisor][:log_dir]}/*.log", node[:supervisor][:logrotate][:extra_paths]].flatten
+  frequency "daily"
+  rotate node[:supervisor][:logrotate][:rotate]
+  create "644 root root"
+  cookbook "supervisor"
 end

@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Perform smarter restarts, so only one process in a group is down at a time.
+#
+# Slightly modified version of script found here:
+# http://b.leppoc.net/2011/07/20/supervisor-rolling-restart/
+
+GROUP=$1
+# Time in seconds.
+TIME_BETWEEN_RUNNING_CHECKS=1
+TIME_BETWEEN_RESTARTS=1
+
+for f in `supervisorctl status | grep -e "^$GROUP:" | awk '{print $1}'`; do
+  supervisorctl restart $f
+
+  while [ 1 ]; do
+    status=`supervisorctl status $f | awk '{print $2}'`
+    if [ "$status" == "RUNNING" ] ; then
+      echo $f restarted
+      break
+    elif [ "$status" == "FATAL" ] ; then
+      echo "Error during restart of $f ($status). Stopping rolling update."
+      exit 1
+    else
+      echo "Now: $status"
+    fi
+    sleep $TIME_BETWEEN_RUNNING_CHECKS
+  done
+
+  sleep $TIME_BETWEEN_RESTARTS
+done
