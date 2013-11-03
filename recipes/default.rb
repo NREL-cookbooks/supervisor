@@ -91,5 +91,9 @@ logrotate_app "supervisor" do
   frequency "daily"
   rotate node[:supervisor][:logrotate][:rotate]
   create "644 root root"
-  cookbook "supervisor"
+  options %w(missingok compress delaycompress notifempty)
+  sharedscripts true
+
+  # Send SIGUSR2 signal to tell supervisord to reopen all log files.
+  postrotate "kill -USR2 `supervisorctl pid`"
 end
