@@ -20,6 +20,18 @@
 include_recipe "logrotate"
 include_recipe "python"
 
+# foodcritic FC023: we prefer not having the resource on non-smartos
+if platform_family?("smartos")
+  package "py27-expat" do
+    action :install
+  end
+end
+
+# Until pip 1.4 drops, see https://github.com/pypa/pip/issues/1033
+python_pip "setuptools" do
+  action :upgrade
+end
+
 python_pip "supervisor" do
   action :upgrade
   version node['supervisor']['version'] if node['supervisor']['version']
@@ -31,7 +43,7 @@ directory node['supervisor']['dir'] do
   mode "775"
 end
 
-template "/etc/supervisord.conf" do
+template node['supervisor']['conffile'] do
   source "supervisord.conf.erb"
   owner "root"
   group "root"
@@ -53,25 +65,59 @@ directory node['supervisor']['log_dir'] do
   recursive true
 end
 
-template "/etc/init.d/supervisor" do
-  source "supervisor.init.erb"
-  owner "root"
-  group "root"
-  mode "755"
-end
+case node['platform_family']
+when "debian"
+  template "/etc/init.d/supervisor" do
+    source "supervisor.init.erb"
+    owner "root"
+    group "root"
+    mode "755"
+  end
 
-case node['platform']
-when "debian", "ubuntu"
   template "/etc/default/supervisor" do
     source "supervisor.default.erb"
     owner "root"
     group "root"
     mode "644"
   end
-end
 
-service "supervisor" do
-  action [:enable, :start]
+  service "supervisor" do
+    action [:enable, :start]
+  end
+when "rhel"
+  template "/etc/init.d/supervisor" do
+    source "supervisor.init.erb"
+    owner "root"
+    group "root"
+    mode "755"
+  end
+
+  service "supervisor" do
+    action [:enable, :start]
+  end
+when "smartos"
+  directory "/opt/local/share/smf/supervisord" do
+    owner "root"
+    group "root"
+    mode "755"
+  end
+
+  template "/opt/local/share/smf/supervisord/manifest.xml" do
+    source "manifest.xml.erb"
+    owner "root"
+    group "root"
+    mode "644"
+    notifies :run, "execute[svccfg-import-supervisord]", :immediately
+  end
+
+  execute "svccfg-import-supervisord" do
+    command "svccfg import /opt/local/share/smf/supervisord/manifest.xml"
+    action :nothing
+  end
+
+  service "supervisord" do
+    action [:enable]
+  end
 end
 
 # Cleanup from previous Chef cookbook where things were named "supervisord"
