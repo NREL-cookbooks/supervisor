@@ -27,11 +27,6 @@ if platform_family?("smartos")
   end
 end
 
-# Until pip 1.4 drops, see https://github.com/pypa/pip/issues/1033
-python_pip "setuptools" do
-  action :upgrade
-end
-
 python_pip "supervisor" do
   action :upgrade
   version node['supervisor']['version'] if node['supervisor']['version']
@@ -65,34 +60,35 @@ directory node['supervisor']['log_dir'] do
   recursive true
 end
 
-case node['platform_family']
-when "debian"
+template "/etc/default/supervisor" do
+  source "debian/supervisor.default.erb"
+  owner "root"
+  group "root"
+  mode "644"
+  only_if { platform_family?("debian") }
+end
+
+init_template_dir = value_for_platform_family(
+  ["rhel", "fedora"] => "rhel",
+  "debian" => "debian"
+)
+
+case node['platform']
+when "amazon", "centos", "debian", "fedora", "redhat", "ubuntu"
   template "/etc/init.d/supervisor" do
-    source "supervisor.init.erb"
+    source "#{init_template_dir}/supervisor.init.erb"
     owner "root"
     group "root"
     mode "755"
-  end
-
-  template "/etc/default/supervisor" do
-    source "supervisor.default.erb"
-    owner "root"
-    group "root"
-    mode "644"
-  end
-
-  service "supervisor" do
-    action [:enable, :start]
-  end
-when "rhel"
-  template "/etc/init.d/supervisor" do
-    source "supervisor.init.erb"
-    owner "root"
-    group "root"
-    mode "755"
+    variables({
+      # TODO: use this variable in the debian platform-family template
+      # instead of altering the PATH and calling "which supervisord".
+      :supervisord => "#{node['python']['prefix_dir']}/bin/supervisord"
+    })
   end
 
   service "supervisor" do
+    supports :status => true, :restart => true
     action [:enable, :start]
   end
 when "smartos"
